@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Maven: Package (build the jar)",
+      "type": "shell",
+      "command": "mvn",
+      "args": ["package"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Installer: Windows (.exe)",
+      "type": "shell",
+      "command": "packaging\\windows\\build-installer.bat",
+      "args": ["exe"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": [],
+      "windows": { "command": "packaging\\windows\\build-installer.bat" }
+    },
+    {
+      "label": "Installer: Windows (.msi)",
+      "type": "shell",
+      "command": "packaging\\windows\\build-installer.bat",
+      "args": ["msi"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": [],
+      "windows": { "command": "packaging\\windows\\build-installer.bat" }
+    },
+    {
+      "label": "Installer: macOS (.dmg)",
+      "type": "shell",
+      "command": "./packaging/macos/build-installer.sh",
+      "args": ["dmg"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Installer: macOS (.pkg)",
+      "type": "shell",
+      "command": "./packaging/macos/build-installer.sh",
+      "args": ["pkg"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Installer: Linux (.deb)",
+      "type": "shell",
+      "command": "./packaging/linux/build-installer.sh",
+      "args": ["deb"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Installer: Linux (.rpm)",
+      "type": "shell",
+      "command": "./packaging/linux/build-installer.sh",
+      "args": ["rpm"],
+      "dependsOn": "Maven: Package (build the jar)",
+      "problemMatcher": []
+    }
+  ]
+}
