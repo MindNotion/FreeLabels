@@ -45,11 +45,7 @@ jobs:
           chmod +x packaging/linux/build-installer.sh
           ./packaging/linux/build-installer.sh
 
-      # ---- Windows ----
-      - name: Install WiX Toolset v3
-        if: matrix.os == 'windows-latest'
-        run: choco install wixtoolset --version=3.14.0 -y
-
+      # ---- Windows ----      
       - name: Build Windows installer
         if: matrix.os == 'windows-latest'
         shell: cmd
