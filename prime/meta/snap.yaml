@@ -1,0 +1,85 @@
+name: freelabels-desktop
+title: FreeLabels Desktop
+version: 1.0.0
+summary: Free offline barcode & QR label design software
+description: |
+  FreeLabels Desktop is a free, offline label design application for
+  Windows, macOS, and Linux. Import a product list, generate GST-ready
+  barcode and QR labels, preview the full sheet live, and export a
+  print-ready PDF or ZPL/TSPL for thermal printers.
+
+  Everything runs locally - nothing is uploaded, no account required.
+license: Apache-2.0
+architectures:
+- amd64
+base: core22
+assumes:
+- command-chain
+- snapd2.43
+apps:
+  freelabels-desktop:
+    command: FreeLabels/bin/FreeLabels
+    plugs:
+    - desktop
+    - desktop-legacy
+    - gsettings
+    - opengl
+    - wayland
+    - x11
+    - home
+    - network
+    - removable-media
+    command-chain:
+    - snap/command-chain/desktop-launch
+confinement: strict
+grade: stable
+environment:
+  SNAP_DESKTOP_RUNTIME: $SNAP/gnome-platform
+  GTK_USE_PORTAL: '1'
+  LD_LIBRARY_PATH: ${SNAP_LIBRARY_PATH}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
+plugs:
+  desktop:
+    mount-host-font-cache: false
+  gtk-3-themes:
+    interface: content
+    target: $SNAP/data-dir/themes
+    default-provider: gtk-common-themes
+  icon-themes:
+    interface: content
+    target: $SNAP/data-dir/icons
+    default-provider: gtk-common-themes
+  sound-themes:
+    interface: content
+    target: $SNAP/data-dir/sounds
+    default-provider: gtk-common-themes
+  gnome-42-2204:
+    interface: content
+    target: $SNAP/gnome-platform
+    default-provider: gnome-42-2204
+hooks:
+  configure:
+    command-chain:
+    - snap/command-chain/hooks-configure-fonts
+    plugs:
+    - desktop
+layout:
+  /usr/share/libdrm:
+    bind: $SNAP/gnome-platform/usr/share/libdrm
+  /usr/lib/x86_64-linux-gnu/webkit2gtk-4.0:
+    bind: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/webkit2gtk-4.0
+  /usr/lib/x86_64-linux-gnu/webkit2gtk-4.1:
+    bind: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1
+  /usr/lib/x86_64-linux-gnu/libproxy:
+    bind: $SNAP/gnome-platform/usr/lib/x86_64-linux-gnu/libproxy
+  /usr/share/xml/iso-codes:
+    bind: $SNAP/gnome-platform/usr/share/xml/iso-codes
+links:
+  contact:
+  - https://www.freelabels.in/contact
+  issues:
+  - https://github.com/MindNotion/FreeLabels/issues
+  source-code:
+  - https://github.com/MindNotion/FreeLabels
+  website:
+  - https://www.freelabels.in

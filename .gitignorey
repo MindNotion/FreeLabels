@@ -1,0 +1,18 @@
+# Build output
+build/
+dist/
+out/
+target/
+
+# Native installers
+*.exe
+*.msi
+*.dmg
+*.deb
+*.rpm
+*.snap
+*.AppImage
+
+# jpackage output
+appimage/
+runtime/

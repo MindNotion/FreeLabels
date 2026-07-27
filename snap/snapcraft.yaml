@@ -1,0 +1,49 @@
+name: freelabels-desktop
+title: FreeLabels Desktop
+version: '1.0.0'
+summary: Free offline barcode & QR label design software
+description: |
+  FreeLabels Desktop is a free, offline label design application for
+  Windows, macOS, and Linux. Import a product list, generate GST-ready
+  barcode and QR labels, preview the full sheet live, and export a
+  print-ready PDF or ZPL/TSPL for thermal printers.
+
+  Everything runs locally - nothing is uploaded, no account required.
+
+icon: packaging/icons/icon.png
+license: Apache-2.0
+website: https://www.freelabels.in
+contact: https://www.freelabels.in/contact
+source-code: https://github.com/MindNotion/FreeLabels
+issues: https://github.com/MindNotion/FreeLabels/issues
+
+base: core22
+confinement: strict
+grade: stable
+compression: lzo
+
+architectures:
+  - build-on: amd64
+
+apps:
+  freelabels-desktop:
+    command: FreeLabels/bin/FreeLabels
+    extensions: [gnome]
+    plugs:
+      - home              # read/write files the user picks (xlsx import, PDF/template save)
+      - desktop
+      - desktop-legacy
+      - x11
+      - wayland
+      - opengl
+      - network           # not required for core features, but harmless to allow
+      - removable-media   # optional: export/import from a USB drive
+
+parts:
+  freelabels:
+    # The build.sh below runs `mvn package` then `jpackage --type app-image`
+    # to produce build/appimage/FreeLabels/ (a self-contained folder with a
+    # bundled JRE) BEFORE snapcraft runs - snapcraft just stages that folder
+    # as-is (source already contains FreeLabels/ at the top level).
+    plugin: dump
+    source: build/appimage
