@@ -1,173 +1,266 @@
-# FreeLabels — Java Swing port of `camel.php`
+# FreeLabels Desktop V2
+## User Manual & Version 2 Release Notes
 
-A desktop (Swing) port of the FreeLabels bulk label designer. It reproduces the
-core workflow of the PHP/JS page:
+**Version:** 2.0  
+**Product:** FreeLabels Desktop  
+**Platform:** Windows / Linux / macOS (Java Desktop Application)
 
-| PHP/JS (camel.php)                              | Java Swing equivalent                              |
-|--------------------------------------------------|-----------------------------------------------------|
-| Page/Template preset dropdown                    | `LayoutState.Preset` + preset combo box              |
-| Rows/Cols/Margins/Gaps inputs                    | Spinners bound to `LayoutState`                      |
-| Single Label Data quick-add form + "Add to Grid" | Quick-add form + **+ Add to Grid** button            |
-| Bulk Import (.xlsx) via SheetJS                  | `XlsxImporter` (Apache POI)                          |
-| Live Preview grid (`drawPreview`)                | `PreviewPanel` (custom `paintComponent`)              |
-| JsBarcode (Code128/EAN13) + QRCode.js             | `BarcodeUtil` (ZXing) — `autoBarcodeType()` ported 1:1 |
-| Zoom in/out                                       | Zoom In/Out buttons + `state.zoom`                   |
-| Labels Data table (`#labelsTable`)               | `LabelTableModel` + editable `JTable`                |
-| Clear / Duplicate to Fill / Download JSON        | Matching buttons, same logic                          |
-| Generate PDF (html2canvas + jsPDF)               | `PdfExporter` (Apache PDFBox), paginated              |
-| Export ZPL (`buildZPL`)                          | `LabelExporter.buildZPL()` — same command structure   |
-| Export TSPL (`buildTSPL`)                        | `LabelExporter.buildTSPL()` — same command structure  |
+---
 
-Not ported (not meaningful outside a browser): rulers/drag-guides, the ad
-banner carousel, and the loader overlay animation — the desktop app just
-disables controls momentarily via a wait cursor during long operations
-(import/PDF export run on a background thread).
+## 1. Introduction
 
-## Added beyond the original PHP/JS
+FreeLabels Desktop V2 introduces a more flexible label-designing experience. Users can create customized labels using dynamic input fields, import bulk data from Excel spreadsheets, and generate labels containing barcodes, QR codes, and plain text.
 
-These three features don't exist in `camel.php` and were added on request:
+Version 2 also introduces improved Unicode text handling, including support for the Indian Rupee symbol (₹) and multilingual characters in PDF exports.
 
-- **Label background** — "Label Background" panel: pick a solid color or an
-  image file; it's stretched to fill every label box in the live preview
-  and the generated PDF. `LayoutState.backgroundMode/backgroundColor/labelBackgroundImage`,
-  painted in `PreviewPanel.paintLabelBackground()` and `PdfExporter.drawBackground()`.
-- **Icon / logo image** — "Label Icon / Logo" panel: import an image once and
-  it's stamped in the top-right corner of every label (preview + PDF).
-  `LayoutState.labelIconImage`.
-- **Save/Load Template** — "Template" panel: saves page size, grid
-  (rows/cols/margins/gaps), background, and icon to a single portable
-  `.fltemplate` file (`TemplateManager`). Images are embedded as base64 PNG
-  inside the file, so the template doesn't depend on the original image
-  files still existing on disk. Label *data* (the actual product rows) is
-  **not** included — that's what "Download JSON" / bulk `.xlsx` import are
-  for; templates are just the reusable layout/styling.
+## 2. What's New in Version 2?
 
-Note: background/icon are not carried into the ZPL/TSPL exports — thermal
-printers are monochrome and embedding raster images requires printer-specific
-graphics commands (`~DG`/`^GF` for ZPL, `BITMAP` for TSPL) that are out of
-scope here; PDF export is the recommended path when background/icon matter.
+| Feature | Description |
+|---|---|
+| Custom Fields | Create any number of custom input fields. |
+| Multiple Field Types | Choose Barcode, QR Code, or Plain Text/Number. |
+| Excel Import | Import bulk label data from custom Excel spreadsheets. |
+| Automatic Content Detection | Detect barcode and QR code values using prefixes. |
+| Dynamic Label Content | Each Excel column represents a separate line or field on the label. |
+| Automatic Text Wrapping | Long text automatically wraps onto additional lines. |
+| Logo Positioning | Place the label icon/logo in any of four corners. |
+| Unicode PDF Support | Improved support for ₹ and international characters. |
+| Improved Text Processing | Better handling of UTF-8, UTF-16, and different newline formats. |
+| PDF Export Improvements | Improved font embedding and multiline text rendering. |
 
-## Native installers (no Java required for end users)
+## 3. Getting Started
 
-`packaging/` contains `jpackage` build scripts that turn `target/freelabels.jar`
-into a native, double-click installer per OS, with a **private JRE bundled
-in** (built via `jlink`) — end users don't install Java at all.
+### Step 1: Launch FreeLabels Desktop
 
+1. Open the FreeLabels Desktop application.
+2. Wait for the main application window to load.
+3. Configure your label dimensions and page settings.
+4. Select the number of rows and columns required for your label sheet.
+
+### Step 2: Configure Label Layout
+
+Configure the following settings according to your label requirements:
+
+- Label width and height.
+- Page size.
+- Number of rows and columns.
+- Horizontal and vertical spacing.
+- Page margins.
+- Background color or background image.
+
+The preview area displays the label layout based on the selected settings.
+
+## 4. Label Icon / Logo Positioning
+
+Version 2 allows users to control where the uploaded logo or icon appears on the label.
+
+### How to configure logo positioning
+
+1. Locate the **Label Icon / Logo** section.
+2. Upload or select your logo image.
+3. Choose one of the following positions using the radio buttons:
+   - Top Left Corner
+   - Top Right Corner
+   - Bottom Left Corner
+   - Bottom Right Corner
+4. The first option, **Top Left Corner**, is selected by default.
+5. Check the label preview to verify the logo placement.
+
+The selected position is applied to the generated labels.
+
+## 5. Custom Fields
+
+The previous **Single Label Data** section has been replaced with the new **Custom Fields** section. This allows users to create labels with their own data structure.
+
+### Available field types
+
+#### Plain Text / Number
+
+Use this field type for product names, descriptions, SKU numbers, prices, batch numbers, manufacturing dates, and expiry dates.
+
+#### Barcode
+
+Use this field type to generate a barcode from the entered value. Typical applications include product identification, inventory management, retail product labels, and warehouse identification.
+
+#### QR Code
+
+Use this field type to generate QR codes containing website URLs, product information, serial numbers, contact information, or custom identification data.
+
+### How to add custom fields
+
+1. Open the **Custom Fields** section.
+2. Click **Add Field**.
+3. Enter the field name.
+4. Select **Plain Text / Number**, **Barcode**, or **QR Code**.
+5. Enter the field value.
+6. Repeat to add additional fields.
+7. Review the label preview.
+
+You can create as many custom fields as required, subject to the available label space.
+
+## 6. Import Bulk Label Data from Excel
+
+Prepare label data in Excel and import it directly into FreeLabels Desktop.
+
+### Excel file requirements
+
+- Supported file format: `.xlsx`
+- Each column represents one input field or label line.
+- Each row represents one individual label.
+- The first row should contain column headings.
+- Each cell contains the corresponding label data.
+
+### Example Excel structure
+
+| Product Name | Product Code | Price | Website |
+|---|---|---|---|
+| Essential Oil | `barcode=EO1001` | ₹500 | `qr_code=https://example.com/eo1` |
+| Lavender Oil | `barcode=EO1002` | ₹650 | `qr_code=https://example.com/eo2` |
+| Lemon Oil | `barcode=EO1003` | ₹450 | `qr_code=https://example.com/eo3` |
+
+### How to import Excel data
+
+1. Open the **Excel Import** section.
+2. Click **Browse / Choose File**.
+3. Select your `.xlsx` file.
+4. Import the spreadsheet.
+5. The application reads the spreadsheet columns and rows.
+6. Each row is converted into an individual label.
+7. Review the imported information in the **Labels Data** section at the bottom of the application.
+8. Check the label preview before generating the final output.
+
+## 7. Barcode and QR Code Detection Using Prefixes
+
+Specify the content type directly inside an Excel cell using a prefix.
+
+### Barcode
+
+Use:
+
+```text
+barcode=YOUR_BARCODE_VALUE
 ```
-packaging/
-├── icons/
-│   ├── icon.png    Linux icon
-│   ├── icon.ico    Windows icon (multi-resolution)
-│   └── icon.icns   macOS icon
-├── linux/build-installer.sh      -> .deb (default) or .rpm
-├── windows/build-installer.bat   -> .exe (default) or .msi
-└── macos/build-installer.sh      -> .dmg (default) or .pkg
+
+Example:
+
+```text
+barcode=EO1001
 ```
 
-**Important: jpackage cannot cross-compile.** A Windows installer must be
-built by running the script *on Windows*, a `.dmg`/`.pkg` *on macOS*, and a
-`.deb`/`.rpm` *on Linux* — each one shells out to that OS's native packaging
-tools (WiX on Windows, pkgbuild/hdiutil on macOS, dpkg-deb/rpmbuild on
-Linux). There's no way around this from a single machine; if you need all
-three, build on three machines/VMs/CI runners (a GitHub Actions matrix job
-across `windows-latest` / `macos-latest` / `ubuntu-latest` is the common way
-to automate this).
+The application identifies the prefix and generates a barcode using the remaining value.
 
-### Steps, per OS
+### QR Code
 
-1. `mvn package` (produces `target/freelabels.jar`)
-2. Run the matching script for that OS:
-   - Linux: `./packaging/linux/build-installer.sh` (needs `fakeroot` for
-     `.deb`, or `rpmbuild` for `.rpm` — e.g. `apt install fakeroot rpm`)
-   - Windows: `packaging\windows\build-installer.bat` (needs the
-     [WiX Toolset v3.x](https://wixtoolset.org/) installed and on `PATH`)
-   - macOS: `./packaging/macos/build-installer.sh` (needs Xcode command
-     line tools: `xcode-select --install`)
-3. Output lands in `target/installer/`.
+Use:
 
-### What was actually verified (in this Linux sandbox)
-
-Rather than just writing these scripts blind, the Linux path was run for
-real, end-to-end:
-
-- `packaging/linux/build-installer.sh deb` and `... rpm` both ran
-  successfully and produced valid, installable packages (`dpkg-deb --info`
-  confirmed correct metadata; the `.deb` was installed with `dpkg -i`).
-- Inspecting the package contents confirmed a full bundled JRE under
-  `opt/freelabels/lib/runtime/` (including `libawt_xawt.so`, i.e. real
-  desktop/GUI support, not just headless), a native launcher binary, the
-  app icon, and a `.desktop` menu entry — exactly what "no Java required"
-  means in practice.
-- The installed launcher was run under an Xvfb virtual display and a
-  screenshot was captured, confirming the full Swing UI (settings panel,
-  live preview, labels table) renders correctly from the packaged,
-  jlink-bundled runtime.
-
-The Windows `.bat` and macOS `.sh` scripts use the identical `jpackage`
-invocation pattern (same flags family, OS-appropriate icon/type/tool
-requirements) but could not be run here since this sandbox is Linux-only —
-`jpackage` refuses to build a Windows or macOS installer on a non-Windows/
-non-macOS host, so those two need to be validated by running them on an
-actual Windows/macOS machine.
-
-## Project layout
-
-```
-freelabels-swing/
-├── pom.xml
-└── src/main/java/com/freelabels/
-    ├── Label.java            Label data model (name, sku, price, barcode, qr, date, gst, hsn, brand)
-    ├── LayoutState.java      Page/grid/zoom state + page presets (A4, A5, 50x30, Avery L7160/5163/3422)
-    ├── BarcodeUtil.java      autoBarcodeType() + ZXing-based barcode/QR rendering
-    ├── PreviewPanel.java     Live preview grid painter
-    ├── LabelExporter.java    ZPL / TSPL text builders
-    ├── PdfExporter.java      Paginated PDF export (PDFBox)
-    ├── XlsxImporter.java     Bulk .xlsx import (Apache POI)
-    ├── LabelTableModel.java  Table model for the "Labels Data" grid
-    └── LabelApp.java         Main JFrame wiring everything together
+```text
+qr_code=YOUR_QR_CONTENT
 ```
 
-## Build & run
+Example:
 
-Requires JDK 11+ and Maven, with normal internet access to Maven Central
-(the sandbox this was built in only had apt access, so dependency
-resolution there used old Debian-packaged POI/PDFBox/ZXing jars for
-verification — use real Maven Central via the `pom.xml` for your build).
-
-```bash
-cd freelabels-swing
-mvn package
-java -jar target/freelabels.jar
+```text
+qr_code=https://www.freelabels.in
 ```
 
-`mvn package` produces a single runnable fat jar (`target/freelabels.jar`)
-via the shade plugin, bundling POI, ZXing, and PDFBox.
+The application identifies the prefix and generates a QR code.
 
-## What was verified in this environment
+### Plain Text / Number
 
-- `mvn -o compile` can't reach Maven Central here (network sandboxed), so
-  full dependency resolution wasn't possible in this exact tool session.
-- Instead, the equivalent Debian packages (`libapache-poi-java`,
-  `libpdfbox2-java`, `libzxing-core-java`, `libzxing-javase-java`) were
-  installed via `apt`, and every `.java` file was compiled successfully
-  with `javac` against those real jars (zero errors).
-- A headless smoke test exercised the non-GUI logic directly:
-  - `autoBarcodeType()` correctly classified EAN13 / Code128 / EPC values.
-  - EAN13 barcode and QR images rendered to real `BufferedImage`s.
-  - `buildZPL()` / `buildTSPL()` produced well-formed printer command text.
-  - `PdfExporter.export()` wrote a real, non-empty multi-object PDF file.
-  - The only path not confirmed end-to-end here was `.xlsx` reading,
-    which hit a known compatibility bug in the *old Debian-packaged*
-    `poi-ooxml-schemas` jar unrelated to this code (`WorkbookFactory.create()`
-    is the standard, well-documented POI read pattern and will work
-    correctly once Maven resolves POI 5.2.5 normally).
+Enter the value without any prefix. Examples include `Essential Oil`, `₹500`, `Batch No. 1025`, and `Manufacturing Date: 08-11-2026`. These values are treated as normal text.
 
-## Notes on rendering fidelity
+> **Important:** The prefix is an instruction to the application and is not intended to appear as part of the printed barcode or QR-code content.
 
-The original `drawPreview()` had ~6 near-duplicate branches (text-only,
-barcode-only, qr+text, barcode+qr, all three, etc.) that all produced the
-same visual layout in practice. `PreviewPanel.paintLabelContent()` unifies
-these into one layout function: QR (if present) on the left third, then a
-text block (brand/name/sku+hsn/price+gst/date), with the barcode (if
-present) placed under the text block — matching the combined visual result
-of the original branches.
+## 8. Automatic Text Wrapping
+
+Long product names or descriptions do not need manually inserted line breaks. Version 2 supports automatic text wrapping when text exceeds the available label width.
+
+Example input:
+
+```text
+Premium Natural Lavender Essential Oil for Aromatherapy
+```
+
+The application automatically wraps the text onto additional lines when necessary. Keep descriptions concise to maintain readability, particularly on small labels.
+
+## 9. Labels Data Section
+
+The **Labels Data** section is located at the bottom of the application. After importing an Excel file, it displays the imported data, including product names, barcode values, QR-code content, prices, other text values, and additional custom columns.
+
+Each spreadsheet row represents one label. Review the imported data before generating the final PDF or printer output.
+
+## 10. Generating PDF Labels
+
+1. Review the label dimensions.
+2. Check the logo position.
+3. Verify the custom fields.
+4. Confirm the imported Excel data.
+5. Inspect the label preview.
+6. Click **Generate PDF**.
+7. Select the destination for the generated PDF file.
+8. Open the PDF and verify the output before printing.
+
+### Improved PDF text support
+
+Version 2 includes improved Unicode font support for the Indian Rupee symbol (₹), international currency symbols supported by the selected font, multilingual Unicode text, multiline text, and automatic text wrapping.
+
+## 11. Printing Labels
+
+1. Verify the PDF page size.
+2. Confirm that the label dimensions match your physical label sheet.
+3. Check the page margins and gaps.
+4. Ensure the printer paper size matches the PDF.
+5. Print a test page before printing a complete batch.
+
+For thermal label printers, select the appropriate printer output format supported by the application.
+
+## 12. Tips for Best Results
+
+1. Always verify the label preview before generating the final output.
+2. Use high-resolution logo images for better print quality.
+3. Avoid unnecessarily long product descriptions.
+4. Use valid barcode values supported by the selected barcode format.
+5. Test QR codes using a smartphone before printing bulk labels.
+6. Keep Excel column headings meaningful.
+7. Avoid blank rows in the Excel spreadsheet.
+8. Ensure Excel values are stored in the intended format, particularly product codes and numbers with leading zeros.
+9. Use an appropriate label size for barcode and QR-code readability.
+10. Print a sample label before starting large-scale production.
+
+## 13. Version 2 Technical Improvements
+
+### Unicode and encoding improvements
+
+- UTF-8 text stream support.
+- UTF-16 Little Endian and Big Endian support.
+- Byte Order Mark (BOM) handling.
+- Improved handling of multibyte characters.
+- Surrogate-pair support.
+- Defensive handling of malformed text data.
+
+### Newline handling
+
+- Unix/Linux LF.
+- Windows CRLF.
+- Legacy Mac CR.
+- Source newline preservation.
+- Explicit newline conversion.
+
+### PDF rendering improvements
+
+- Embedded TrueType Unicode fonts.
+- Improved currency symbol rendering.
+- Safer multiline text processing.
+- Correct PDF text-block lifecycle management.
+- Better handling of unsupported glyphs.
+
+## 14. Version Information
+
+**Product:** FreeLabels Desktop  
+**Release:** Version 2.0  
+**Major Focus:** Custom Label Creation, Excel Bulk Import, Barcode/QR Generation, Unicode Text and PDF Improvements.
+
+---
+
+**FreeLabels Desktop V2**  
+*Create labels your way. Import your data. Generate labels effortlessly.*
