@@ -23,7 +23,7 @@ cd "$(dirname "$0")/../.."
 
 TYPE="${1:-dmg}"
 APP_NAME="FreeLabels"
-APP_VERSION="1.0.0"
+APP_VERSION="2.0.0"
 VENDOR="MindNotion"
 MAIN_JAR="freelabels.jar"
 MAIN_CLASS="com.freelabels.LabelApp"

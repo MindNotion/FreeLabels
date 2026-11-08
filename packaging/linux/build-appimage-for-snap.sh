@@ -31,7 +31,7 @@ jpackage \
   --name FreeLabels \
   --main-jar "$MAIN_JAR" \
   --main-class "$MAIN_CLASS" \
-  --app-version 1.0.0 \
+  --app-version 2.0.0 \
   --vendor "MindNotion" \
   --icon "$ICON"
 

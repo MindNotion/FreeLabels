@@ -18,7 +18,7 @@ set TYPE=%1
 if "%TYPE%"=="" set TYPE=exe
 
 set APP_NAME=FreeLabels
-set APP_VERSION=1.0.0
+set APP_VERSION=2.0.0
 set VENDOR=MindNotion
 set MAIN_JAR=freelabels.jar
 set MAIN_CLASS=com.freelabels.LabelApp
