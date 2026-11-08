@@ -1,5 +1,8 @@
 package com.freelabels;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Plain data holder for a single label's fields.
  * Mirrors the JS object used in camel.php:
@@ -15,6 +18,13 @@ public class Label {
     public String gst = "";
     public String hsn = "";
     public String brand = "";
+    /** Ordered user-defined rows imported from arbitrary spreadsheet columns. */
+    public final List<CustomField> customFields = new ArrayList<>();
+    public static final class CustomField {
+        public enum Type { TEXT, BARCODE, QR }
+        public final String value; public final Type type;
+        public CustomField(String value, Type type) { this.value=value==null?"":value; this.type=type; }
+    }
 
     public Label() {}
 
@@ -33,7 +43,8 @@ public class Label {
 
     /** Deep-ish copy (all fields are immutable Strings). */
     public Label copy() {
-        return new Label(name, sku, price, barcode, qr, date, gst, hsn, brand);
+        Label copy = new Label(name, sku, price, barcode, qr, date, gst, hsn, brand);
+        copy.customFields.addAll(customFields); return copy;
     }
 
     private static String nz(String s) {

@@ -47,6 +47,21 @@ public final class LabelExporter {
 
                     int tx = x + qrWidth + 10;
                     int ty = y;
+                    if (!l.customFields.isEmpty()) {
+                        for (Label.CustomField field : l.customFields) {
+                            if (field.value.isEmpty()) continue;
+                            if (field.type == Label.CustomField.Type.QR) {
+                                out.append(String.format("^FO%d,%d^BQN,2,4^FDLA,%s^FS%n", tx, ty, field.value));
+                                ty += 120;
+                            } else if (field.type == Label.CustomField.Type.BARCODE) {
+                                out.append(String.format("^FO%d,%d^BCN,55,Y,N,N^FD%s^FS%n", tx, ty, field.value));
+                                ty += 75;
+                            } else {
+                                out.append(String.format("^FO%d,%d^A0N,20,20^FD%s^FS%n", tx, ty, zplEscape(field.value)));
+                                ty += 25;
+                            }
+                        }
+                    }
                     out.append(String.format("^FO%d,%d^A0N,24,24^FD%s^FS%n", tx, ty, slice(l.brand, 28)));
                     ty += 30;
                     out.append(String.format("^FO%d,%d^A0N,20,20^FD%s^FS%n", tx, ty, slice(l.name, 32)));
@@ -111,6 +126,21 @@ public final class LabelExporter {
 
                     double tx = xmm + qrOffset + 2;
                     double ty = ymm;
+                    if (!l.customFields.isEmpty()) {
+                        for (Label.CustomField field : l.customFields) {
+                            if (field.value.isEmpty()) continue;
+                            if (field.type == Label.CustomField.Type.QR) {
+                                out.append(String.format("QRCODE %.1f,%.1f,L,4,A,0,\"%s\"%n", tx, ty, tsplEscape(field.value)));
+                                ty += 22;
+                            } else if (field.type == Label.CustomField.Type.BARCODE) {
+                                out.append(String.format("BARCODE %.1f,%.1f,\"128\",55,1,0,2,2,\"%s\"%n", tx, ty, tsplEscape(field.value)));
+                                ty += 16;
+                            } else {
+                                out.append(String.format("TEXT %.1f,%.1f,\"0\",0,1,1,\"%s\"%n", tx, ty, tsplEscape(field.value)));
+                                ty += 5;
+                            }
+                        }
+                    }
                     out.append(String.format("TEXT %.1f,%.1f,\"0\",0,1,1,\"%s\"%n", tx, ty, slice(l.brand, 30)));
                     ty += 5;
                     out.append(String.format("TEXT %.1f,%.1f,\"0\",0,1,1,\"%s\"%n", tx, ty, slice(l.name, 34)));
@@ -146,6 +176,13 @@ public final class LabelExporter {
     private static String slice(String s, int max) {
         if (s == null) return "";
         return s.length() > max ? s.substring(0, max) : s;
+    }
+
+    private static String zplEscape(String s) {
+        return s == null ? "" : s.replace("^", " ").replace("~", " ").replace("\r", " ").replace("\n", " ");
+    }
+    private static String tsplEscape(String s) {
+        return s == null ? "" : s.replace("\\", "\\").replace("\"", "\\\"").replace("\r", " ").replace("\n", " ");
     }
 
     private static String padEnd(String s, int len, char c) {

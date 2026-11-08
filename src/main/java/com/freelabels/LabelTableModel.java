@@ -3,70 +3,31 @@ package com.freelabels;
 import javax.swing.table.AbstractTableModel;
 import java.util.List;
 
-/** Backs the "Labels Data" JTable: #, Name, SKU, Price, Barcode, QR/EPC, Date, GST, HSN, Brand. */
+/** Editable table showing all imported/custom columns without truncating the schema to nine fields. */
 public class LabelTableModel extends AbstractTableModel {
-
-    private static final String[] COLS = {
-            "#", "Name", "SKU", "Price", "Barcode", "QR/EPC", "Date", "GST", "HSN", "Brand"
-    };
-
     private final List<Label> labels;
-
-    public LabelTableModel(List<Label> labels) {
-        this.labels = labels;
+    public LabelTableModel(List<Label> labels){this.labels=labels;}
+    private int maxFields(){int n=0;for(Label l:labels)n=Math.max(n,l.customFields.size());return n;}
+    @Override public int getRowCount(){return labels.size();}
+    @Override public int getColumnCount(){return 1+maxFields();}
+    @Override public String getColumnName(int c){return c==0?"#":"Field "+c;}
+    @Override public Object getValueAt(int r,int c){
+        if(c==0)return r+1;
+        Label l=labels.get(r); int i=c-1;
+        if(i>=l.customFields.size())return "";
+        Label.CustomField f=l.customFields.get(i);
+        String prefix=f.type==Label.CustomField.Type.BARCODE?"barcode=":f.type==Label.CustomField.Type.QR?"qr_code=":"";
+        return prefix+f.value;
     }
-
-    @Override public int getRowCount() { return labels.size(); }
-    @Override public int getColumnCount() { return COLS.length; }
-    @Override public String getColumnName(int column) { return COLS[column]; }
-
-    @Override
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        Label l = labels.get(rowIndex);
-        switch (columnIndex) {
-            case 0: return rowIndex + 1;
-            case 1: return l.name;
-            case 2: return l.sku;
-            case 3: return l.price;
-            case 4: return l.barcode;
-            case 5: return l.qr;
-            case 6: return l.date;
-            case 7: return l.gst;
-            case 8: return l.hsn;
-            case 9: return l.brand;
-            default: return "";
-        }
+    @Override public boolean isCellEditable(int r,int c){return c>0;}
+    @Override public void setValueAt(Object value,int r,int c){
+        if(c==0)return; Label l=labels.get(r);int i=c-1;
+        while(l.customFields.size()<=i)l.customFields.add(new Label.CustomField("",Label.CustomField.Type.TEXT));
+        String v=value==null?"":value.toString();Label.CustomField.Type t=Label.CustomField.Type.TEXT;
+        if(v.regionMatches(true,0,"barcode=",0,8)){t=Label.CustomField.Type.BARCODE;v=v.substring(8);}
+        else if(v.regionMatches(true,0,"qr_code=",0,8)){t=Label.CustomField.Type.QR;v=v.substring(8);}
+        l.customFields.set(i,new Label.CustomField(v,t));fireTableCellUpdated(r,c);
     }
-
-    @Override
-    public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return columnIndex != 0;
-    }
-
-    @Override
-    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        Label l = labels.get(rowIndex);
-        String v = aValue == null ? "" : aValue.toString();
-        switch (columnIndex) {
-            case 1: l.name = v; break;
-            case 2: l.sku = v; break;
-            case 3: l.price = v; break;
-            case 4: l.barcode = v; break;
-            case 5: l.qr = v; break;
-            case 6: l.date = v; break;
-            case 7: l.gst = v; break;
-            case 8: l.hsn = v; break;
-            case 9: l.brand = v; break;
-            default: return;
-        }
-        fireTableCellUpdated(rowIndex, columnIndex);
-    }
-
-    public void removeRow(int rowIndex) {
-        labels.remove(rowIndex);
-        fireTableRowsDeleted(rowIndex, rowIndex);
-        fireTableDataChanged(); // re-number the "#" column
-    }
-
-    public void refresh() { fireTableDataChanged(); }
+    public void removeRow(int r){labels.remove(r);fireTableDataChanged();}
+    public void refresh(){fireTableStructureChanged();}
 }

@@ -51,6 +51,7 @@ public final class TemplateManager {
         sb.append("marginLeft=").append(state.marginLeft).append('\n');
         sb.append("gapX=").append(state.gapX).append('\n');
         sb.append("gapY=").append(state.gapY).append('\n');
+        sb.append("iconPosition=").append(state.iconPosition.name()).append('\n');
         sb.append("backgroundMode=").append(state.backgroundMode.name()).append('\n');
         if (state.backgroundColor != null) {
             sb.append("backgroundColorRGB=").append(state.backgroundColor.getRGB()).append('\n');
@@ -93,6 +94,7 @@ public final class TemplateManager {
                     case "marginLeft": state.marginLeft = Double.parseDouble(value); break;
                     case "gapX": state.gapX = Double.parseDouble(value); break;
                     case "gapY": state.gapY = Double.parseDouble(value); break;
+                    case "iconPosition": state.iconPosition = LayoutState.IconPosition.valueOf(value); break;
                     case "backgroundMode": state.backgroundMode = LayoutState.BackgroundMode.valueOf(value); break;
                     case "backgroundColorRGB": state.backgroundColor = new Color(Integer.parseInt(value), true); break;
                     case "backgroundImageBase64": state.labelBackgroundImage = fromBase64(value); break;

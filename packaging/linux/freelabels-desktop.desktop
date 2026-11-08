@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=FreeLabels Desktop
+Comment=Free offline barcode & QR label design software
+Exec=freelabels-desktop
+Icon=${SNAP}/meta/gui/icon.png
+Terminal=false
+Type=Application
+Categories=Office;Graphics;
+StartupWMClass=FreeLabels

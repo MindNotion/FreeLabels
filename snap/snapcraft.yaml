@@ -1,6 +1,6 @@
 name: freelabels-desktop
 title: FreeLabels Desktop
-version: '1.0.0'
+version: '2.0.0'
 summary: Free offline barcode & QR label design software
 description: |
   FreeLabels Desktop is a free, offline label design application for
@@ -28,22 +28,26 @@ architectures:
 apps:
   freelabels-desktop:
     command: FreeLabels/bin/FreeLabels
+    desktop: meta/gui/freelabels-desktop.desktop
     extensions: [gnome]
     plugs:
-      - home              # read/write files the user picks (xlsx import, PDF/template save)
+      - home
       - desktop
       - desktop-legacy
       - x11
       - wayland
       - opengl
-      - network           # not required for core features, but harmless to allow
-      - removable-media   # optional: export/import from a USB drive
+      - network
+      - removable-media
 
 parts:
   freelabels:
-    # The build.sh below runs `mvn package` then `jpackage --type app-image`
-    # to produce build/appimage/FreeLabels/ (a self-contained folder with a
-    # bundled JRE) BEFORE snapcraft runs - snapcraft just stages that folder
-    # as-is (source already contains FreeLabels/ at the top level).
     plugin: dump
     source: build/appimage
+
+  desktop-assets:
+    plugin: dump
+    source: packaging
+    organize:
+      linux/freelabels-desktop.desktop: meta/gui/freelabels-desktop.desktop
+      icons/icon.png: meta/gui/icon.png

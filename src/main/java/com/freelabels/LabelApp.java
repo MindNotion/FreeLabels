@@ -50,6 +50,11 @@ public class LabelApp extends JFrame {
 
     // Quick add fields
     private JTextField fName, fSKU, fPrice, fBarcode, fQR, fDate, fGST, fHSN, fBrand;
+    private JTextField customValueField;
+    private JComboBox<Label.CustomField.Type> customTypeCombo;
+    private final java.util.List<Label.CustomField> pendingCustomFields = new ArrayList<>();
+    private DefaultListModel<String> customFieldListModel;
+    private JRadioButton[] iconPositionRadios;
 
     private static final FileNameExtensionFilter IMAGE_FILTER =
             new FileNameExtensionFilter("Image files (*.png, *.jpg, *.jpeg, *.gif, *.bmp)",
@@ -58,7 +63,7 @@ public class LabelApp extends JFrame {
             new FileNameExtensionFilter("FreeLabels template (*.fltemplate)", "fltemplate");
 
     public LabelApp() {
-        super("🏷 FreeLabels V1.3 — Label Creation Platform");
+        super("🏷 FreeLabels V2 — Label Creation Platform");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
@@ -163,7 +168,19 @@ public class LabelApp extends JFrame {
         iconClearBtn.addActionListener(this::onClearIcon);
         iconRow.add(iconPreviewLabel); iconRow.add(iconChooseBtn); iconRow.add(iconClearBtn);
         panel.add(iconRow);
-        panel.add(new JLabel("<html><small>Stamped in the top-right corner of every label.</small></html>"));
+        ButtonGroup iconPositions = new ButtonGroup();
+        JPanel positionPanel = new JPanel(new GridLayout(2,2,2,2));
+        String[] positionNames={"Top left corner","Top right corner","Bottom left corner","Bottom right corner"};
+        LayoutState.IconPosition[] positions=LayoutState.IconPosition.values();
+        iconPositionRadios=new JRadioButton[positions.length];
+        for(int i=0;i<positions.length;i++){
+            final LayoutState.IconPosition pos=positions[i];
+            JRadioButton radio=new JRadioButton(positionNames[i],i==1);
+            iconPositions.add(radio); positionPanel.add(radio); iconPositionRadios[i]=radio;
+            radio.addActionListener(e->{state.iconPosition=pos;refreshAll();});
+            if (i == 1) state.iconPosition = pos;
+        }
+        panel.add(labeled("Logo position",positionPanel));
 
         panel.add(new JSeparator());
         panel.add(Box.createVerticalStrut(6));
@@ -179,19 +196,29 @@ public class LabelApp extends JFrame {
 
         panel.add(new JSeparator());
         panel.add(Box.createVerticalStrut(6));
-        panel.add(new JLabel("<html><b>Single Label Data (for quick test)</b></html>"));
-
-        fName = textField(); fSKU = textField(); fPrice = textField(); fBarcode = textField();
-        fQR = textField(); fDate = textField(); fGST = textField(); fHSN = textField(); fBrand = textField();
-        panel.add(labeled("Product Name", fName));
-        panel.add(row(labeled("SKU", fSKU), labeled("Price", fPrice)));
-        panel.add(labeled("Barcode (auto: EAN-13 / EPC / Code128)", fBarcode));
-        panel.add(labeled("QR text/URL or EPC", fQR));
-        panel.add(labeled("Exp/Manf Date", fDate));
-        panel.add(row(labeled("GST %", fGST), labeled("HSN", fHSN)));
-        panel.add(labeled("Brand", fBrand));
-
-        JButton addBtn = new JButton("+ Add to Grid");
+        panel.add(new JLabel("<html><b>Custom Fields</b></html>"));
+        customFieldListModel=new DefaultListModel<>();
+        JList<String> customFieldList=new JList<>(customFieldListModel);
+        customFieldList.setVisibleRowCount(3);
+        panel.add(new JScrollPane(customFieldList));
+        customValueField=textField();
+        customTypeCombo=new JComboBox<>(Label.CustomField.Type.values());
+        panel.add(labeled("Field value",customValueField));
+        panel.add(labeled("Content type",customTypeCombo));
+        JPanel customButtons=new JPanel(new GridLayout(1,2,4,0));
+        JButton addFieldBtn=new JButton("Add Field");
+        JButton removeFieldBtn=new JButton("Remove Selected");
+        addFieldBtn.addActionListener(e->{
+            String v=customValueField.getText();
+            if(v.trim().isEmpty()){error("Enter a value for the custom field.");return;}
+            Label.CustomField.Type t=(Label.CustomField.Type)customTypeCombo.getSelectedItem();
+            pendingCustomFields.add(new Label.CustomField(v,t));
+            customFieldListModel.addElement(t+": "+v);
+            customValueField.setText("");
+        });
+        removeFieldBtn.addActionListener(e->{int i=customFieldList.getSelectedIndex();if(i>=0){pendingCustomFields.remove(i);customFieldListModel.remove(i);}});
+        customButtons.add(addFieldBtn);customButtons.add(removeFieldBtn);panel.add(customButtons);
+        JButton addBtn = new JButton("+ Add Label");
         addBtn.addActionListener(this::onAddSingle);
         panel.add(addBtn);
 
@@ -216,8 +243,8 @@ public class LabelApp extends JFrame {
         JButton importBtn = new JButton("Choose File\u2026");
         importBtn.addActionListener(this::onImportXlsx);
         panel.add(importBtn);
-        panel.add(new JLabel("<html><small>A: Name, B: SKU, C: Price, D: Barcode, E: QR/EPC,<br>"
-                + "F: Expiry/Manufacturing, G: GST, H: HSN, I: Brand</small></html>"));
+        panel.add(new JLabel("<html><small>Each row creates one label. Each column creates one ordered line.<br>"
+                + "Use barcode=value or qr_code=value for machine-readable fields.</small></html>"));
 
         panel.add(Box.createVerticalStrut(8));
         JPanel zoomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -406,15 +433,15 @@ public class LabelApp extends JFrame {
     // ---------------------------------------------------------------- actions
 
     private void onAddSingle(ActionEvent e) {
-        Label l = new Label(fName.getText(), fSKU.getText(), fPrice.getText(), fBarcode.getText(),
-                fQR.getText(), fDate.getText(), fGST.getText(), fHSN.getText(), fBrand.getText());
+        Label l = new Label();
+        l.customFields.addAll(pendingCustomFields);
         labels.add(l);
         refreshAll();
     }
 
     private void onImportXlsx(ActionEvent e) {
         JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Excel files (*.xlsx, *.xls)", "xlsx", "xls"));
+        chooser.setFileFilter(new FileNameExtensionFilter("Excel files (*.xlsx)", "xlsx"));
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
         File f = chooser.getSelectedFile();
         setBusy(true);
@@ -443,8 +470,9 @@ public class LabelApp extends JFrame {
         int choice = JOptionPane.showConfirmDialog(this, "Reset all fields, labels, and preview?",
                 "Confirm Reset", JOptionPane.YES_NO_OPTION);
         if (choice != JOptionPane.YES_OPTION) return;
-        fName.setText(""); fSKU.setText(""); fPrice.setText(""); fBarcode.setText("");
-        fQR.setText(""); fDate.setText(""); fGST.setText(""); fHSN.setText(""); fBrand.setText("");
+        pendingCustomFields.clear();
+        if(customFieldListModel!=null) customFieldListModel.clear();
+        if(customValueField!=null) customValueField.setText("");
         labels.clear();
         state.zoom = 1.0;
         zoomLabel.setText("100%");
@@ -452,6 +480,8 @@ public class LabelApp extends JFrame {
         state.backgroundColor = null;
         state.labelBackgroundImage = null;
         state.labelIconImage = null;
+        state.iconPosition = LayoutState.IconPosition.TOP_RIGHT;
+        if(iconPositionRadios!=null && iconPositionRadios.length>1) iconPositionRadios[1].setSelected(true);
         updateBackgroundStatusLabel();
         updateIconPreview();
         presetCombo.setSelectedItem(LayoutState.Preset.A4);
@@ -577,6 +607,7 @@ public class LabelApp extends JFrame {
             gapYField.setValue(state.gapY);
             updateBackgroundStatusLabel();
             updateIconPreview();
+            if(iconPositionRadios!=null) iconPositionRadios[state.iconPosition.ordinal()].setSelected(true);
             refreshAll();
             info("Template loaded from " + f.getAbsolutePath());
         } catch (IOException ex) {

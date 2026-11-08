@@ -4,7 +4,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -12,6 +12,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,8 +37,10 @@ public final class PdfExporter {
         float pageHpt = (float) state.pageHmm * MM_TO_PT;
 
         try (PDDocument doc = new PDDocument()) {
-            PDFont font = PDType1Font.HELVETICA;
-            PDFont fontBold = PDType1Font.HELVETICA_BOLD;
+            // Embedded Unicode TrueType fonts are required for ₹ and other non-WinAnsi
+            // characters. Loading from the classpath keeps the exporter portable.
+            PDFont font = loadFont(doc, "/fonts/DejaVuSans.ttf");
+            PDFont fontBold = loadFont(doc, "/fonts/DejaVuSans-Bold.ttf");
 
             float left = (float) state.marginLeft * MM_TO_PT;
             float top = (float) state.marginTop * MM_TO_PT;
@@ -71,7 +74,7 @@ public final class PdfExporter {
                             cs.addRect(bx, byBottom, labelW, labelH);
                             cs.stroke();
 
-                            drawLabel(doc, cs, l, bx, byTop, labelW, labelH, font, fontBold, state.labelIconImage);
+                            drawLabel(doc, cs, l, bx, byTop, labelW, labelH, font, fontBold, state.labelIconImage, state.iconPosition);
                         }
                     }
                 }
@@ -96,7 +99,8 @@ public final class PdfExporter {
 
     private static void drawLabel(PDDocument doc, PDPageContentStream cs, Label l,
                                    float bx, float byTop, float labelW, float labelH,
-                                   PDFont font, PDFont fontBold, BufferedImage iconImage) throws IOException {
+                                   PDFont font, PDFont fontBold, BufferedImage iconImage,
+                                   LayoutState.IconPosition iconPosition) throws IOException {
         float pad = 3 * MM_TO_PT / 3f; // small inner padding
         float innerX = bx + pad;
         float innerW = labelW - pad * 2;
@@ -118,11 +122,38 @@ public final class PdfExporter {
         if (textW <= 2) return;
 
         List<String> lines = new ArrayList<>();
+        if (!l.customFields.isEmpty()) {
+            float cy=byTop-pad-8;
+            cs.setNonStrokingColor(0,0,0);
+            for (Label.CustomField field:l.customFields) {
+                if(field.value.isEmpty()) continue;
+                if(field.type==Label.CustomField.Type.TEXT) {
+                    List<String> wrapped = wrapText(font, 7f, normalizeText(field.value), innerW);
+                    for (String wrappedLine : wrapped) {
+                        if (cy < byTop - labelH + pad) break;
+                        drawTextLine(cs, font, 7f, wrappedLine, innerX, cy);
+                        cy -= 9f;
+                    }
+                } else {
+                    BufferedImage image=field.type==Label.CustomField.Type.QR
+                        ? BarcodeUtil.renderQr(field.value,Math.max(24,(int)Math.min(innerW, labelH/4)))
+                        : BarcodeUtil.renderBarcode(field.value,BarcodeUtil.autoBarcodeType(field.value),Math.max(40,(int)innerW),18);
+                    if(image!=null){PDImageXObject obj=LosslessFactory.createFromImage(doc,image);
+                        float iw=Math.min(innerW,field.type==Label.CustomField.Type.QR?labelH/4:innerW);
+                        float ih=field.type==Label.CustomField.Type.QR?iw:18;
+                        cs.drawImage(obj,innerX,cy-ih,iw,ih); cy-=ih+3;}
+                }
+                if(cy<byTop-labelH+pad) break;
+            }
+            lines.clear();
+        }
+        if (l.customFields.isEmpty()) {
         if (!l.brand.isEmpty()) lines.add(l.brand);
         if (!l.name.isEmpty()) lines.add(l.name);
         if (!l.sku.isEmpty() || !l.hsn.isEmpty()) lines.add((l.sku + "  " + l.hsn).trim());
         if (!l.price.isEmpty() || !l.gst.isEmpty()) lines.add((l.price + "  " + l.gst).trim());
         if (!l.date.isEmpty()) lines.add(l.date);
+        }
 
         float barcodeH = hasBarcode ? Math.min(20f, labelH * 0.3f) : 0;
         float fontSize = Math.max(5f, Math.min(9f, (labelH - pad * 2 - barcodeH) / Math.max(1, lines.size()) / 1.6f));
@@ -136,13 +167,12 @@ public final class PdfExporter {
         float ty = byTop - pad - fontSize;
         for (int i = 0; i < lines.size(); i++) {
             PDFont f = i == 0 ? fontBold : font;
-            String text = clip(f, fontSize, lines.get(i), textW);
-            cs.beginText();
-            cs.setFont(f, fontSize);
-            cs.newLineAtOffset(textX, ty);
-            cs.showText(text);
-            cs.endText();
-            ty -= fontSize * 1.35f;
+            List<String> wrappedLines = wrapText(f, fontSize, normalizeText(lines.get(i)), textW);
+            for (String text : wrappedLines) {
+                if (ty < byTop - labelH + barcodeH) break;
+                drawTextLine(cs, f, fontSize, text, textX, ty);
+                ty -= fontSize * 1.35f;
+            }
             if (ty < byTop - labelH + barcodeH) break;
         }
 
@@ -160,31 +190,148 @@ public final class PdfExporter {
 
         if (iconImage != null) {
             float iconSize = Math.min(labelW, labelH) * 0.22f;
-            float ix = bx + labelW - iconSize - 3;
-            float iy = byTop - iconSize - 3;
+            float ix = (iconPosition==LayoutState.IconPosition.TOP_LEFT || iconPosition==LayoutState.IconPosition.BOTTOM_LEFT) ? bx+3 : bx+labelW-iconSize-3;
+            float iy = (iconPosition==LayoutState.IconPosition.TOP_LEFT || iconPosition==LayoutState.IconPosition.TOP_RIGHT) ? byTop-iconSize-3 : byTop-labelH+3;
             PDImageXObject iconX = LosslessFactory.createFromImage(doc, iconImage);
             cs.drawImage(iconX, ix, iy, iconSize, iconSize);
         }
     }
 
-    private static String clip(PDFont font, float size, String text, float maxWidth) throws IOException {
-        if (font.getStringWidth(text) / 1000f * size <= maxWidth) return text;
-        String t = text;
-        while (t.length() > 1) {
-            t = t.substring(0, t.length() - 1);
-            String candidate = t + "\u2026";
-            if (font.getStringWidth(sanitize(candidate)) / 1000f * size <= maxWidth) return sanitize(candidate);
+    /**
+     * Loads and embeds a TrueType font in the PDF. Font resources are bundled
+     * in src/main/resources/fonts so generated PDFs do not depend on fonts
+     * installed on the host operating system.
+     */
+    private static PDFont loadFont(PDDocument document, String resourcePath) throws IOException {
+        InputStream stream = PdfExporter.class.getResourceAsStream(resourcePath);
+        if (stream == null) {
+            throw new IOException("Required PDF font resource is missing: " + resourcePath);
         }
-        return sanitize(t);
+        try (InputStream in = stream) {
+            return PDType0Font.load(document, in);
+        }
     }
 
-    /** PDType1Font/Helvetica cannot encode arbitrary unicode; fall back to "..." if needed. */
-    private static String sanitize(String s) {
+    /**
+     * Draws exactly one logical line. beginText/endText are paired in a
+     * finally block so an exception cannot leave the content stream in text mode.
+     * Control characters are removed before PDFBox sees the string.
+     */
+    private static void drawTextLine(PDPageContentStream stream, PDFont font,
+                                     float size, String text, float x, float y)
+            throws IOException {
+        String safe = printableText(text);
+        boolean started = false;
         try {
-            PDType1Font.HELVETICA.getStringWidth(s);
-            return s;
-        } catch (Exception e) {
-            return s.replace("\u2026", "...");
+            stream.beginText();
+            started = true;
+            stream.setFont(font, size);
+            stream.newLineAtOffset(x, y);
+            stream.showText(replaceUnsupported(font, safe));
+        } finally {
+            if (started) {
+                stream.endText();
+            }
         }
+    }
+
+    /** Normalize all supported line endings without passing LF/CR to showText(). */
+    private static String normalizeText(String value) {
+        if (value == null || value.isEmpty()) return "";
+        return value.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
+    private static String printableText(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length();) {
+            int cp = value.codePointAt(i);
+            i += Character.charCount(cp);
+            if (cp == '\t') {
+                out.append("    ");
+            } else if (cp == '\n' || cp == '\r') {
+                // A logical line must never contain a line separator.
+                out.append(' ');
+            } else if (!Character.isISOControl(cp)) {
+                out.appendCodePoint(cp);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * DejaVu Sans covers the Rupee sign and common Latin/extended characters.
+     * If a particular glyph is absent, replace only that code point with U+FFFD
+     * (or '?' if the font does not contain U+FFFD), rather than failing the PDF.
+     */
+    private static String replaceUnsupported(PDFont font, String value) throws IOException {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length();) {
+            int cp = value.codePointAt(i);
+            String glyph = new String(Character.toChars(cp));
+            i += Character.charCount(cp);
+            try {
+                font.getStringWidth(glyph);
+                out.append(glyph);
+            } catch (IllegalArgumentException ex) {
+                String replacement = "\uFFFD";
+                try {
+                    font.getStringWidth(replacement);
+                    out.append(replacement);
+                } catch (IllegalArgumentException ignored) {
+                    out.append('?');
+                }
+            }
+        }
+        return out.toString();
+    }
+
+    /** Wraps at whitespace; long unbroken tokens are split on Unicode code-point boundaries. */
+    private static List<String> wrapText(PDFont font, float size, String value,
+                                         float maxWidth) throws IOException {
+        List<String> result = new ArrayList<>();
+        if (value == null || value.isEmpty()) {
+            result.add("");
+            return result;
+        }
+        String[] paragraphs = value.split("\\n", -1);
+        for (String paragraph : paragraphs) {
+            if (paragraph.isEmpty()) {
+                result.add("");
+                continue;
+            }
+            StringBuilder line = new StringBuilder();
+            for (String word : paragraph.trim().split("\\s+")) {
+                String candidate = line.length() == 0 ? word : line + " " + word;
+                if (width(font, size, candidate) <= maxWidth) {
+                    line.setLength(0);
+                    line.append(candidate);
+                    continue;
+                }
+                if (line.length() > 0) {
+                    result.add(line.toString());
+                    line.setLength(0);
+                }
+                // Split a single token wider than the available line width safely.
+                StringBuilder tokenPart = new StringBuilder();
+                for (int i = 0; i < word.length();) {
+                    int cp = word.codePointAt(i);
+                    String glyph = new String(Character.toChars(cp));
+                    i += Character.charCount(cp);
+                    if (tokenPart.length() > 0 &&
+                            width(font, size, tokenPart.toString() + glyph) > maxWidth) {
+                        result.add(tokenPart.toString());
+                        tokenPart.setLength(0);
+                    }
+                    tokenPart.append(glyph);
+                }
+                line.append(tokenPart);
+            }
+            if (line.length() > 0) result.add(line.toString());
+        }
+        return result;
+    }
+
+    private static float width(PDFont font, float size, String value) throws IOException {
+        return font.getStringWidth(replaceUnsupported(font, printableText(value))) / 1000f * size;
     }
 }

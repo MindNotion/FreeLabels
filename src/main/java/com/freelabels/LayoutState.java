@@ -31,6 +31,8 @@ public class LayoutState {
 
     /** Optional logo/icon stamped on every label (e.g. top-right corner). Independent of backgroundMode. */
     public BufferedImage labelIconImage = null;
+    public enum IconPosition { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
+    public IconPosition iconPosition = IconPosition.TOP_LEFT;
 
     public enum Preset {
         A4("A4 (210\u00d7297 mm)"),

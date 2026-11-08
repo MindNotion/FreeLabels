@@ -155,6 +155,29 @@ public class PreviewPanel extends JPanel {
         if (!l.price.isEmpty() || !l.gst.isEmpty()) lines.add(join(l.price, l.gst));
         if (!l.date.isEmpty()) lines.add(l.date);
 
+        if (!l.customFields.isEmpty()) {
+            double cy=innerY+9;
+            for (Label.CustomField field:l.customFields) {
+                if (field.value.isEmpty()) continue;
+                if (field.type==Label.CustomField.Type.QR) {
+                    int size=(int)Math.min( Math.min(innerW*0.28, innerH*0.28), 72);
+                    BufferedImage img=BarcodeUtil.renderQr(field.value,Math.max(20,size));
+                    if(img!=null){g.drawImage(img,(int)innerX,(int)cy,size,size,null); cy+=size+3;}
+                } else if(field.type==Label.CustomField.Type.BARCODE) {
+                    int h=(int)Math.max(14,Math.min(32,innerH*0.22));
+                    BufferedImage img=BarcodeUtil.renderBarcode(field.value,BarcodeUtil.autoBarcodeType(field.value),(int)innerW,h);
+                    if(img!=null){g.drawImage(img,(int)innerX,(int)cy,(int)innerW,h,null);cy+=h+3;}
+                } else {
+                    g.setColor(Color.BLACK); g.setFont(new Font("SansSerif",Font.PLAIN,Math.max(7,Math.min(11,(int)(innerH/Math.max(2,l.customFields.size()+1))))));
+                    FontMetrics fm=g.getFontMetrics();
+                    for(String wrapped:wrapText(field.value,fm,(int)innerW)){
+                        if(cy>innerY+innerH-2) break;
+                        g.drawString(wrapped,(float)innerX,(float)cy); cy+=fm.getHeight();
+                    }
+                }
+                if(cy>innerY+innerH) break;
+            }
+        } else {
         boolean hasBarcode = l.barcode != null && !l.barcode.trim().isEmpty();
         double barcodeH = hasBarcode ? Math.min(28, innerH * 0.35) : 0;
         double textAreaH = innerH - barcodeH - (hasBarcode ? 4 : 0);
@@ -188,12 +211,34 @@ public class PreviewPanel extends JPanel {
             }
         }
 
+        }
         if (state.labelIconImage != null) {
             double iconSize = Math.min(bw, bh) * 0.22;
-            double ix = bx + bw - iconSize - 3;
-            double iy = by + 3;
+            double ix = (state.iconPosition==LayoutState.IconPosition.TOP_LEFT || state.iconPosition==LayoutState.IconPosition.BOTTOM_LEFT) ? bx+3 : bx+bw-iconSize-3;
+            double iy = (state.iconPosition==LayoutState.IconPosition.TOP_LEFT || state.iconPosition==LayoutState.IconPosition.TOP_RIGHT) ? by+3 : by+bh-iconSize-3;
             g.drawImage(state.labelIconImage, (int) ix, (int) iy, (int) iconSize, (int) iconSize, null);
         }
+    }
+
+    private static java.util.List<String> wrapText(String text, FontMetrics fm, int width) {
+        java.util.List<String> out=new java.util.ArrayList<>();
+        StringBuilder line=new StringBuilder();
+        for(String word:text.split("\\s+")){
+            String candidate=line.length()==0?word:line+" "+word;
+            if(line.length()>0 && fm.stringWidth(candidate)>width){out.add(line.toString());line.setLength(0);}
+            if(fm.stringWidth(word)>width){
+                if(line.length()>0){out.add(line.toString());line.setLength(0);}
+                StringBuilder part=new StringBuilder();
+                for(int i=0;i<word.length();){
+                    int cp=word.codePointAt(i); String ch=new String(Character.toChars(cp));
+                    if(part.length()>0 && fm.stringWidth(part.toString()+ch)>width){out.add(part.toString());part.setLength(0);}
+                    part.append(ch); i+=Character.charCount(cp);
+                }
+                if(part.length()>0)line.append(part);
+            } else {if(line.length()>0)line.append(' ');line.append(word);}
+        }
+        if(line.length()>0)out.add(line.toString());
+        return out;
     }
 
     private static String join(String a, String b) {

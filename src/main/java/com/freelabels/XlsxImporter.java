@@ -1,66 +1,39 @@
 package com.freelabels;
 
 import org.apache.poi.ss.usermodel.*;
+import java.io.*;
+import java.util.*;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-/**
- * Mirrors the xlsxInput 'change' handler in camel.php:
- * Column A: Name, B: SKU, C: Price, D: Barcode, E: QR/EPC,
- * F: Expiry/Manufacturing, G: GST, H: HSN, I: Brand.
- * Skips a header row if row 0's first cell contains "name".
- */
+/** Imports arbitrary-column label sheets. Each non-empty cell becomes one ordered label line. */
 public final class XlsxImporter {
-
     private XlsxImporter() {}
-
     public static List<Label> importFile(File file) throws IOException {
-        List<Label> out = new ArrayList<>();
-        try (FileInputStream fis = new FileInputStream(file);
-             Workbook wb = WorkbookFactory.create(fis)) {
-
-            Sheet sheet = wb.getSheetAt(0);
-            DataFormatter fmt = new DataFormatter();
-
-            for (Row row : sheet) {
-                if (row == null) continue;
-                int idx = row.getRowNum();
-                String c0 = cellText(row, 0, fmt);
-                if (idx == 0 && c0 != null && c0.toLowerCase().contains("name")) {
-                    continue; // header row
+        List<Label> out=new ArrayList<>();
+        try(FileInputStream fis=new FileInputStream(file); Workbook wb=WorkbookFactory.create(fis)){
+            if(wb.getNumberOfSheets()==0) return out;
+            Sheet sheet=wb.getSheetAt(0); DataFormatter fmt=new DataFormatter();
+            for(Row row:sheet){
+                if(row==null) continue;
+                Label label=new Label();
+                int last=Math.max(0,row.getLastCellNum());
+                for(int c=0;c<last;c++){
+                    Cell cell=row.getCell(c,Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    String value=cell==null?"":fmt.formatCellValue(cell).trim();
+                    if(value.isEmpty()) { label.customFields.add(new Label.CustomField("",Label.CustomField.Type.TEXT)); continue; }
+                    Label.CustomField.Type type=Label.CustomField.Type.TEXT;
+                    if(value.regionMatches(true,0,"barcode=",0,8)){
+                        type=Label.CustomField.Type.BARCODE; value=value.substring(8);
+                    } else if(value.regionMatches(true,0,"qr_code=",0,8)){
+                        type=Label.CustomField.Type.QR; value=value.substring(8);
+                    }
+                    label.customFields.add(new Label.CustomField(value,type));
                 }
-                boolean allBlank = true;
-                for (int i = 0; i < 9; i++) {
-                    if (!isBlank(cellText(row, i, fmt))) { allBlank = false; break; }
-                }
-                if (allBlank) continue;
-
-                Label l = new Label(
-                        cellText(row, 0, fmt), // name
-                        cellText(row, 1, fmt), // sku
-                        cellText(row, 2, fmt), // price
-                        cellText(row, 3, fmt), // barcode
-                        cellText(row, 4, fmt), // qr
-                        cellText(row, 5, fmt), // date
-                        cellText(row, 6, fmt), // gst
-                        cellText(row, 7, fmt), // hsn
-                        cellText(row, 8, fmt)  // brand
-                );
-                out.add(l);
+                boolean any=false; for(Label.CustomField f:label.customFields) if(!f.value.trim().isEmpty()){any=true;break;}
+                if(any) out.add(label);
             }
+        } catch(org.apache.poi.EncryptedDocumentException ex) {
+            throw new IOException("The Excel workbook is encrypted or invalid.",ex);
         }
         return out;
     }
-
-    private static String cellText(Row row, int i, DataFormatter fmt) {
-        Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-        if (cell == null) return "";
-        return fmt.formatCellValue(cell).trim();
-    }
-
-    private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
 }
