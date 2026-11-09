@@ -63,7 +63,7 @@ Version 2 allows users to control where the uploaded logo or icon appears on the
    - Top Right Corner
    - Bottom Left Corner
    - Bottom Right Corner
-4. The first option, **Top Left Corner**, is selected by default.
+4. The first option, **Top Right Corner**, is selected by default.
 5. Check the label preview to verify the logo placement.
 
 The selected position is applied to the generated labels.
