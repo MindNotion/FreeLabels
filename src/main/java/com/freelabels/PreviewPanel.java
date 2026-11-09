@@ -162,11 +162,21 @@ public class PreviewPanel extends JPanel {
                 if (field.type==Label.CustomField.Type.QR) {
                     int size=(int)Math.min( Math.min(innerW*0.28, innerH*0.28), 72);
                     BufferedImage img=BarcodeUtil.renderQr(field.value,Math.max(20,size));
-                    if(img!=null){g.drawImage(img,(int)innerX,(int)cy,size,size,null); cy+=size+3;}
+                    if(img!=null){
+                        double imageGap = 6;
+                        cy += imageGap;
+                        g.drawImage(img,(int)innerX,(int)cy,size,size,null);
+                        cy += size + imageGap;
+                    }
                 } else if(field.type==Label.CustomField.Type.BARCODE) {
                     int h=(int)Math.max(14,Math.min(32,innerH*0.22));
                     BufferedImage img=BarcodeUtil.renderBarcode(field.value,BarcodeUtil.autoBarcodeType(field.value),(int)innerW,h);
-                    if(img!=null){g.drawImage(img,(int)innerX,(int)cy,(int)innerW,h,null);cy+=h+3;}
+                    if(img!=null){
+                        double imageGap = 6;
+                        cy += imageGap;
+                        g.drawImage(img,(int)innerX,(int)cy,(int)innerW,h,null);
+                        cy += h + imageGap;
+                    }
                 } else {
                     g.setColor(Color.BLACK); g.setFont(new Font("SansSerif",Font.PLAIN,Math.max(7,Math.min(11,(int)(innerH/Math.max(2,l.customFields.size()+1))))));
                     FontMetrics fm=g.getFontMetrics();
@@ -180,7 +190,9 @@ public class PreviewPanel extends JPanel {
         } else {
         boolean hasBarcode = l.barcode != null && !l.barcode.trim().isEmpty();
         double barcodeH = hasBarcode ? Math.min(28, innerH * 0.35) : 0;
-        double textAreaH = innerH - barcodeH - (hasBarcode ? 4 : 0);
+        double barcodeGap = hasBarcode ? 6 : 0;
+        double barcodeBottomGap = hasBarcode ? 4 : 0;
+        double textAreaH = innerH - barcodeH - barcodeGap - barcodeBottomGap;
 
         float fontSize = (float) Math.max(6, Math.min(11, textAreaH / Math.max(1, lines.size()) / 1.6));
         g.setColor(Color.BLACK);
@@ -201,7 +213,7 @@ public class PreviewPanel extends JPanel {
             int bcW = (int) Math.max(20, textW);
             int bcH = (int) Math.max(10, barcodeH);
             BufferedImage bcImg = BarcodeUtil.renderBarcode(l.barcode, type, bcW, bcH);
-            double barY = innerY + innerH - barcodeH;
+            double barY = innerY + innerH - barcodeH - barcodeBottomGap;
             if (bcImg != null) {
                 g.drawImage(bcImg, (int) textX, (int) barY, bcW, bcH, null);
             }

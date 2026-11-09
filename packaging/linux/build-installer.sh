@@ -21,7 +21,7 @@ cd "$(dirname "$0")/../.."   # repo root
 
 TYPE="${1:-deb}"
 APP_NAME="FreeLabels"
-APP_VERSION="2.0.0"
+APP_VERSION="2.4.0"
 VENDOR="MindNotion"
 MAIN_JAR="freelabels.jar"
 MAIN_CLASS="com.freelabels.LabelApp"

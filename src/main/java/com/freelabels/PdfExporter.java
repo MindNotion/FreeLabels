@@ -138,10 +138,17 @@ public final class PdfExporter {
                     BufferedImage image=field.type==Label.CustomField.Type.QR
                         ? BarcodeUtil.renderQr(field.value,Math.max(24,(int)Math.min(innerW, labelH/4)))
                         : BarcodeUtil.renderBarcode(field.value,BarcodeUtil.autoBarcodeType(field.value),Math.max(40,(int)innerW),18);
-                    if(image!=null){PDImageXObject obj=LosslessFactory.createFromImage(doc,image);
-                        float iw=Math.min(innerW,field.type==Label.CustomField.Type.QR?labelH/4:innerW);
-                        float ih=field.type==Label.CustomField.Type.QR?iw:18;
-                        cs.drawImage(obj,innerX,cy-ih,iw,ih); cy-=ih+3;}
+                    if (image != null) {
+                        PDImageXObject obj = LosslessFactory.createFromImage(doc, image);
+                        float iw = Math.min(innerW, field.type == Label.CustomField.Type.QR ? labelH / 4 : innerW);
+                        float ih = field.type == Label.CustomField.Type.QR ? iw : 18f;
+
+                        // Keep clear whitespace both before and after each barcode / QR image.
+                        float imageGap = 6f;
+                        cy -= imageGap;
+                        cs.drawImage(obj, innerX, cy - ih, iw, ih);
+                        cy -= ih + imageGap;
+                    }
                 }
                 if(cy<byTop-labelH+pad) break;
             }
@@ -155,8 +162,14 @@ public final class PdfExporter {
         if (!l.date.isEmpty()) lines.add(l.date);
         }
 
-        float barcodeH = hasBarcode ? Math.min(20f, labelH * 0.3f) : 0;
-        float fontSize = Math.max(5f, Math.min(9f, (labelH - pad * 2 - barcodeH) / Math.max(1, lines.size()) / 1.6f));
+        // Reserve a separate bottom band for the barcode and a visible gap above it.
+        float barcodeGap = hasBarcode ? 6f : 0f;
+        float barcodeBottomGap = hasBarcode ? 4f : 0f;
+        float barcodeH = hasBarcode ? Math.min(20f, Math.max(15f, labelH * 0.3f)) : 0f;
+        float textBottomLimit = byTop - labelH + pad + barcodeBottomGap + barcodeH + barcodeGap;
+        float fontSize = Math.max(5f, Math.min(9f,
+                (labelH - pad * 2 - barcodeH - barcodeGap - barcodeBottomGap)
+                        / Math.max(1, lines.size()) / 1.6f));
 
         // IMPORTANT: drawBackground() may have left the fill (non-stroking) color set to the
         // label's background color — text glyphs are painted with that same fill color via
@@ -169,11 +182,11 @@ public final class PdfExporter {
             PDFont f = i == 0 ? fontBold : font;
             List<String> wrappedLines = wrapText(f, fontSize, normalizeText(lines.get(i)), textW);
             for (String text : wrappedLines) {
-                if (ty < byTop - labelH + barcodeH) break;
+                if (ty < textBottomLimit) break;
                 drawTextLine(cs, f, fontSize, text, textX, ty);
                 ty -= fontSize * 1.35f;
             }
-            if (ty < byTop - labelH + barcodeH) break;
+            if (ty < textBottomLimit) break;
         }
 
         if (hasBarcode) {
@@ -183,7 +196,7 @@ public final class PdfExporter {
             BufferedImage bcImg = BarcodeUtil.renderBarcode(l.barcode, type, bcW, bcH);
             if (bcImg != null) {
                 PDImageXObject bcX = LosslessFactory.createFromImage(doc, bcImg);
-                float barY = byTop - labelH + pad;
+                float barY = byTop - labelH + pad + barcodeBottomGap;
                 cs.drawImage(bcX, textX, barY, bcW, bcH);
             }
         }

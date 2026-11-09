@@ -4,7 +4,7 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableCellRenderer; 
+import javax.swing.table.DefaultTableCellRenderer;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -70,7 +70,7 @@ public class LabelApp extends JFrame {
         JSplitPane topSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                 buildSettingsPanel(), buildPreviewPanel());
         topSplit.setResizeWeight(0.0);
-        topSplit.setDividerLocation(549);
+        topSplit.setDividerLocation(749);
 
         JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
                 topSplit, buildLabelsTablePanel());
@@ -88,20 +88,36 @@ public class LabelApp extends JFrame {
     // ---------------------------------------------------------------- settings
 
     private JComponent buildSettingsPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(new EmptyBorder(14, 14, 14, 14));
+        content.setBackground(new Color(245, 247, 250));
 
-        JPanel header = new JPanel(new BorderLayout());
-        header.add(new JLabel("<html><b>Input &amp; Settings</b></html>"), BorderLayout.WEST);
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.setOpaque(false);
+        JLabel title = new JLabel("Input & Settings");
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
         JButton resetBtn = new JButton("Reset");
+        resetBtn.setBackground(new Color(223, 111, 99));
+        resetBtn.setForeground(Color.BLACK);
+        resetBtn.setOpaque(true);
+        resetBtn.setBorderPainted(false);
+        resetBtn.setFocusPainted(false);
+        resetBtn.setFont(resetBtn.getFont().deriveFont(Font.BOLD, 12f));
+        resetBtn.setMargin(new Insets(7, 18, 7, 18));
         resetBtn.addActionListener(this::onReset);
-        header.add(resetBtn, BorderLayout.EAST);
-        panel.add(header);
-        panel.add(Box.createVerticalStrut(8));
 
-        panel.add(labeled("Choose Page / Template", presetCombo = new JComboBox<>(LayoutState.Preset.values())));
+        header.add(title, BorderLayout.WEST);
+        header.add(resetBtn, BorderLayout.EAST);
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(header);
+        content.add(Box.createVerticalStrut(12));
+
+        // Page and grid settings
+        JPanel pageSection = settingsSection("PAGE & GRID SETTINGS");
+        presetCombo = new JComboBox<>(LayoutState.Preset.values());
         presetCombo.addActionListener(e -> applyPreset((LayoutState.Preset) presetCombo.getSelectedItem()));
+        pageSection.add(labeled("Choose Page / Template", presetCombo));
 
         pageWField = new JSpinner(new SpinnerNumberModel(210.0, 1.0, 2000.0, 1.0));
         pageHField = new JSpinner(new SpinnerNumberModel(297.0, 1.0, 2000.0, 1.0));
@@ -109,19 +125,17 @@ public class LabelApp extends JFrame {
         customSizeRow.setVisible(false);
         pageWField.addChangeListener(e -> { state.pageWmm = (double) pageWField.getValue(); refreshAll(); });
         pageHField.addChangeListener(e -> { state.pageHmm = (double) pageHField.getValue(); refreshAll(); });
-        panel.add(customSizeRow);
+        pageSection.add(customSizeRow);
 
         rowsField = intSpinner(state.rows, 1, 100);
         colsField = intSpinner(state.cols, 1, 100);
-        panel.add(row(labeled("Rows", rowsField), labeled("Cols", colsField)));
-
+        pageSection.add(row(labeled("Rows", rowsField), labeled("Columns", colsField)));
         marginTopField = mmSpinner(state.marginTop);
         marginLeftField = mmSpinner(state.marginLeft);
-        panel.add(row(labeled("Top Margin (mm)", marginTopField), labeled("Left Margin (mm)", marginLeftField)));
-
+        pageSection.add(row(labeled("Top Margin (mm)", marginTopField), labeled("Left Margin (mm)", marginLeftField)));
         gapXField = mmSpinner(state.gapX);
         gapYField = mmSpinner(state.gapY);
-        panel.add(row(labeled("Horizontal Gap (mm)", gapXField), labeled("Vertical Gap (mm)", gapYField)));
+        pageSection.add(row(labeled("Horizontal Gap (mm)", gapXField), labeled("Vertical Gap (mm)", gapYField)));
 
         for (JSpinner sp : new JSpinner[]{rowsField, colsField, marginTopField, marginLeftField, gapXField, gapYField}) {
             sp.addChangeListener(e -> {
@@ -134,144 +148,251 @@ public class LabelApp extends JFrame {
                 refreshAll();
             });
         }
-
         toggleGridBox = new JCheckBox("5 mm Grid Overlay", true);
+        toggleGridBox.setOpaque(false);
         toggleGridBox.addActionListener(e -> { previewPanel.setShowGrid(toggleGridBox.isSelected()); previewPanel.repaint(); });
-        panel.add(toggleGridBox);
+        pageSection.add(toggleGridBox);
+        addSection(content, pageSection);
 
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(new JLabel("<html><b>Label Background</b></html>"));
+        // Label background
+        JPanel backgroundSection = settingsSection("LABEL BACKGROUND");
         bgStatusLabel = new JLabel("None");
         bgStatusLabel.setFont(bgStatusLabel.getFont().deriveFont(Font.ITALIC, 11f));
-        panel.add(bgStatusLabel);
-        JPanel bgRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        JButton bgColorBtn = new JButton("Choose Color\u2026");
-        JButton bgImageBtn = new JButton("Choose Image\u2026");
+        backgroundSection.add(bgStatusLabel);
+        JPanel bgRow = leftFlowPanel();
+        JButton bgColorBtn = new JButton("Choose Color…");
+        JButton bgImageBtn = new JButton("Choose Image…");
         JButton bgClearBtn = new JButton("Clear");
         bgColorBtn.addActionListener(this::onChooseBackgroundColor);
         bgImageBtn.addActionListener(this::onChooseBackgroundImage);
         bgClearBtn.addActionListener(this::onClearBackground);
         bgRow.add(bgColorBtn); bgRow.add(bgImageBtn); bgRow.add(bgClearBtn);
-        panel.add(bgRow);
+        backgroundSection.add(bgRow);
+        addSection(content, backgroundSection);
 
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(new JLabel("<html><b>Label Icon / Logo</b></html>"));
-        JPanel iconRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        // Logo and position
+        JPanel logoSection = settingsSection("LABEL ICON / LOGO");
+        JPanel iconRow = leftFlowPanel();
         iconPreviewLabel = new JLabel();
-        iconPreviewLabel.setPreferredSize(new Dimension(32, 32));
-        iconPreviewLabel.setBorder(BorderFactory.createDashedBorder(Color.GRAY));
-        JButton iconChooseBtn = new JButton("Choose Icon\u2026");
+        iconPreviewLabel.setPreferredSize(new Dimension(36, 36));
+        iconPreviewLabel.setBorder(BorderFactory.createDashedBorder(new Color(145, 155, 168)));
+        JButton iconChooseBtn = new JButton("Choose Icon…");
         JButton iconClearBtn = new JButton("Clear");
         iconChooseBtn.addActionListener(this::onChooseIcon);
         iconClearBtn.addActionListener(this::onClearIcon);
         iconRow.add(iconPreviewLabel); iconRow.add(iconChooseBtn); iconRow.add(iconClearBtn);
-        panel.add(iconRow);
+        logoSection.add(iconRow);
         ButtonGroup iconPositions = new ButtonGroup();
-        JPanel positionPanel = new JPanel(new GridLayout(2,2,2,2));
-        String[] positionNames={"Top left corner","Top right corner","Bottom left corner","Bottom right corner"};
-        LayoutState.IconPosition[] positions=LayoutState.IconPosition.values();
-        iconPositionRadios=new JRadioButton[positions.length];
-        for(int i=0;i<positions.length;i++){
-            final LayoutState.IconPosition pos=positions[i];
-            JRadioButton radio=new JRadioButton(positionNames[i],i==1);
-            iconPositions.add(radio); positionPanel.add(radio); iconPositionRadios[i]=radio;
-            radio.addActionListener(e->{state.iconPosition=pos;refreshAll();});
+        JPanel positionPanel = new JPanel(new GridLayout(2, 2, 8, 5));
+        positionPanel.setOpaque(false);
+        String[] positionNames = {"Top left corner", "Top right corner", "Bottom left corner", "Bottom right corner"};
+        LayoutState.IconPosition[] positions = LayoutState.IconPosition.values();
+        iconPositionRadios = new JRadioButton[positions.length];
+        for (int i = 0; i < positions.length; i++) {
+            final LayoutState.IconPosition pos = positions[i];
+            JRadioButton radio = new JRadioButton(positionNames[i], i == 1);
+            radio.setOpaque(false);
+            iconPositions.add(radio);
+            positionPanel.add(radio);
+            iconPositionRadios[i] = radio;
+            radio.addActionListener(e -> { state.iconPosition = pos; refreshAll(); });
             if (i == 1) state.iconPosition = pos;
         }
-        panel.add(labeled("Logo position",positionPanel));
+        logoSection.add(labeled("Logo position", positionPanel));
+        addSection(content, logoSection);
 
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(new JLabel("<html><b>Template</b></html>"));
-        JPanel templateRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        JButton saveTemplateBtn = new JButton("Save Template\u2026");
-        JButton loadTemplateBtn = new JButton("Load Template\u2026");
+        // Templates
+        JPanel templateSection = settingsSection("TEMPLATES");
+        JPanel templateRow = leftFlowPanel();
+        JButton saveTemplateBtn = new JButton("Save Template…");
+        JButton loadTemplateBtn = new JButton("Load Template…");
         saveTemplateBtn.addActionListener(this::onSaveTemplate);
         loadTemplateBtn.addActionListener(this::onLoadTemplate);
         templateRow.add(saveTemplateBtn); templateRow.add(loadTemplateBtn);
-        panel.add(templateRow);
-        panel.add(new JLabel("<html><small>Saves page/grid size, background, and icon (not label data) for reuse.</small></html>"));
+        templateSection.add(templateRow);
+        templateSection.add(helpText("Saves page/grid size, background, and icon (not label data) for reuse."));
+        addSection(content, templateSection);
 
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
-        panel.add(new JLabel("<html><b>Custom Fields</b></html>"));
-        customFieldListModel=new DefaultListModel<>();
-        JList<String> customFieldList=new JList<>(customFieldListModel);
+        // Custom fields
+        JPanel customSection = settingsSection("CUSTOM FIELDS");
+        customFieldListModel = new DefaultListModel<>();
+        JList<String> customFieldList = new JList<>(customFieldListModel);
         customFieldList.setVisibleRowCount(3);
-        panel.add(new JScrollPane(customFieldList));
-        customValueField=textField();
-        customTypeCombo=new JComboBox<>(Label.CustomField.Type.values());
-        panel.add(labeled("Field value",customValueField));
-        panel.add(labeled("Content type",customTypeCombo));
-        JPanel customButtons=new JPanel(new GridLayout(1,2,4,0));
-        JButton addFieldBtn=new JButton("Add Field");
-        JButton removeFieldBtn=new JButton("Remove Selected");
-        addFieldBtn.addActionListener(e->{
-            String v=customValueField.getText();
-            if(v.trim().isEmpty()){error("Enter a value for the custom field.");return;}
-            Label.CustomField.Type t=(Label.CustomField.Type)customTypeCombo.getSelectedItem();
-            pendingCustomFields.add(new Label.CustomField(v,t));
-            customFieldListModel.addElement(t+": "+v);
+        JScrollPane customListScroll = new JScrollPane(customFieldList);
+        customListScroll.setPreferredSize(new Dimension(250, 76));
+        customSection.add(customListScroll);
+        customValueField = textField();
+        customTypeCombo = new JComboBox<>(Label.CustomField.Type.values());
+        customSection.add(labeled("Field value", customValueField));
+        customSection.add(labeled("Content type", customTypeCombo));
+        // Custom-field actions: two compact buttons on row one, wide Add Label on row two.
+        JPanel customButtons = new JPanel(new GridLayout(2, 1, 0, 8));
+        customButtons.setOpaque(false);
+        customButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
+        customButtons.setBorder(new EmptyBorder(6, 0, 6, 0));
+
+        JPanel fieldActionRow = new JPanel(new GridLayout(1, 2, 14, 0));
+        fieldActionRow.setOpaque(false);
+        JButton addFieldBtn = new JButton("Add Field");
+        addFieldBtn.setBackground(new Color(214, 237, 23));
+        addFieldBtn.setForeground(Color.black);
+        addFieldBtn.setOpaque(true);
+        addFieldBtn.setBorderPainted(false);
+        addFieldBtn.setFocusPainted(false);
+
+        JButton removeFieldBtn = new JButton("Remove Selected");
+        removeFieldBtn.setBackground(new Color(206, 74, 126));
+        removeFieldBtn.setForeground(Color.black);
+        removeFieldBtn.setOpaque(true);
+        removeFieldBtn.setBorderPainted(false);
+        removeFieldBtn.setFocusPainted(false);
+
+        addFieldBtn.addActionListener(e -> {
+            String v = customValueField.getText();
+            if (v.trim().isEmpty()) { error("Enter a value for the custom field."); return; }
+            Label.CustomField.Type t = (Label.CustomField.Type) customTypeCombo.getSelectedItem();
+            pendingCustomFields.add(new Label.CustomField(v, t));
+            customFieldListModel.addElement(t + ": " + v);
             customValueField.setText("");
         });
-        removeFieldBtn.addActionListener(e->{int i=customFieldList.getSelectedIndex();if(i>=0){pendingCustomFields.remove(i);customFieldListModel.remove(i);}});
-        customButtons.add(addFieldBtn);customButtons.add(removeFieldBtn);panel.add(customButtons);
+        removeFieldBtn.addActionListener(e -> {
+            int i = customFieldList.getSelectedIndex();
+            if (i >= 0) { pendingCustomFields.remove(i); customFieldListModel.remove(i); }
+        });
+        fieldActionRow.add(addFieldBtn);
+        fieldActionRow.add(removeFieldBtn);
+
         JButton addBtn = new JButton("+ Add Label");
         addBtn.addActionListener(this::onAddSingle);
-        panel.add(addBtn);
+        addBtn.setBackground(new Color(254, 231, 21));
+        addBtn.setForeground(Color.black);
+        addBtn.setOpaque(true);
+        addBtn.setBorderPainted(false);
+        addBtn.setFocusPainted(false);
+        addBtn.setFont(addBtn.getFont().deriveFont(Font.BOLD, 14f));
+        addBtn.setMargin(new Insets(12, 18, 12, 18));
+        addBtn.setPreferredSize(new Dimension(0, 48));
 
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
+        customButtons.add(fieldActionRow);
+        customButtons.add(addBtn);
+        customSection.add(customButtons);
+        addSection(content, customSection);
 
-        // Create label with HTML header and anchor tag
-        JLabel headerLabel = new JLabel("<html><b>Bulk Import</b>&nbsp;&nbsp;&nbsp;<u style='color:#ce1212'>📥 Download sample xlsx file</u></html>");
+        // Bulk import
+        JPanel importSection = settingsSection("BULK IMPORT");
+        JLabel headerLabel = new JLabel("Download sample XLSX file");
+        headerLabel.setForeground(new Color(190, 35, 35));
         headerLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
+        headerLabel.setToolTipText("Download sample Excel file");
         headerLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI("https://www.freelabels.in/sample_bulk_file.xlsx"));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+            @Override public void mouseClicked(MouseEvent e) {
+                try { Desktop.getDesktop().browse(new URI("https://www.freelabels.in/sample_bulk_file.xlsx")); }
+                catch (Exception ex) { ex.printStackTrace(); }
             }
         });
-        panel.add(headerLabel);
-        JButton importBtn = new JButton("Choose File\u2026");
+        headerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        importSection.add(headerLabel);
+        JButton importBtn = new JButton("Choose File…");
+        importBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         importBtn.addActionListener(this::onImportXlsx);
-        panel.add(importBtn);
-        panel.add(new JLabel("<html><small>Each row creates one label. Each column creates one ordered line.<br>"
-                + "Use barcode=value or qr_code=value for machine-readable fields.</small></html>"));
+        importSection.add(importBtn);
+        importSection.add(helpText("Each row creates one label. Each column creates one ordered line. Use barcode=value or qr_code=value for machine-readable fields."));
+        addSection(content, importSection);
 
-        panel.add(Box.createVerticalStrut(8));
-        JPanel zoomRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        // Preview zoom and exports
+        JPanel outputSection = settingsSection("PREVIEW & EXPORT");
+        JPanel zoomRow = leftFlowPanel();
         JButton zoomInBtn = new JButton("Zoom In");
         JButton zoomOutBtn = new JButton("Zoom Out");
         zoomLabel = new JLabel("100%");
         zoomInBtn.addActionListener(e -> setZoom(state.zoom + 0.1));
         zoomOutBtn.addActionListener(e -> setZoom(state.zoom - 0.1));
         zoomRow.add(zoomInBtn); zoomRow.add(zoomOutBtn); zoomRow.add(zoomLabel);
-        panel.add(zoomRow);
-
-        panel.add(new JSeparator());
-        panel.add(Box.createVerticalStrut(6));
-        JPanel exportRow = new JPanel(new GridLayout(0, 1, 4, 4));
+        outputSection.add(zoomRow);
+        JPanel exportRow = new JPanel(new GridLayout(0, 1, 6, 6));
+        exportRow.setOpaque(false);
         JButton pdfBtn = new JButton("Generate PDF");
+        pdfBtn.setBackground(new Color(249, 87, 0));
+        pdfBtn.setForeground(new Color(59, 24, 119));
+        pdfBtn.setOpaque(true);
+        pdfBtn.setBorderPainted(false);
+        pdfBtn.setFocusPainted(false);
+        pdfBtn.setFont(addBtn.getFont().deriveFont(Font.BOLD, 14f));
+        pdfBtn.setMargin(new Insets(12, 18, 12, 18));
+        pdfBtn.setPreferredSize(new Dimension(0, 48));
+
         JButton zplBtn = new JButton("Export ZPL");
+        zplBtn.setBackground(new Color(151, 188, 98));
+        zplBtn.setForeground(new Color(44, 95, 45));
+        zplBtn.setOpaque(true);
+        zplBtn.setBorderPainted(false);
+        zplBtn.setFocusPainted(false);
+        zplBtn.setFont(addBtn.getFont().deriveFont(Font.BOLD, 14f));
+        zplBtn.setMargin(new Insets(12, 18, 12, 18));
+        zplBtn.setPreferredSize(new Dimension(0, 48));
+
         JButton tsplBtn = new JButton("Export TSPL");
+        tsplBtn.setBackground(new Color(253, 210, 14));
+        tsplBtn.setForeground(new Color(199, 45, 27));
+        tsplBtn.setOpaque(true);
+        tsplBtn.setBorderPainted(false);
+        tsplBtn.setFocusPainted(false);
+        tsplBtn.setFont(addBtn.getFont().deriveFont(Font.BOLD, 14f));
+        tsplBtn.setMargin(new Insets(12, 18, 12, 18));
+        tsplBtn.setPreferredSize(new Dimension(0, 48));
+
         pdfBtn.addActionListener(this::onGeneratePdf);
         zplBtn.addActionListener(this::onExportZpl);
         tsplBtn.addActionListener(this::onExportTspl);
         exportRow.add(pdfBtn); exportRow.add(zplBtn); exportRow.add(tsplBtn);
-        panel.add(exportRow);
+        outputSection.add(exportRow);
+        addSection(content, outputSection);
 
-        JScrollPane scroll = new JScrollPane(panel);
+        JScrollPane scroll = new JScrollPane(content);
         scroll.setBorder(null);
+        scroll.getViewport().setBackground(new Color(245, 247, 250));
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;
+    }
+
+    private static JPanel settingsSection(String title) {
+        JPanel section = new JPanel();
+        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+        section.setBackground(Color.WHITE);
+        section.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(new Color(155, 169, 185), 1),
+                        BorderFactory.createMatteBorder(3, 0, 0, 0, new Color(45, 91, 135))),
+                new EmptyBorder(11, 12, 12, 12)));
+        JLabel heading = new JLabel(title);
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 11.5f));
+        heading.setForeground(new Color(45, 72, 98));
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(heading);
+        section.add(Box.createVerticalStrut(9));
+        section.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        return section;
+    }
+
+    private static void addSection(JPanel parent, JPanel section) {
+        section.setAlignmentX(Component.LEFT_ALIGNMENT);
+        parent.add(section);
+        parent.add(Box.createVerticalStrut(12));
+    }
+
+    private static JPanel leftFlowPanel() {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
+        p.setOpaque(false);
+        p.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return p;
+    }
+
+    private static JLabel helpText(String text) {
+        JLabel label = new JLabel("<html><span style='color:#596579'>" + text + "</span></html>");
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 11f));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return label;
     }
 
     private JComponent buildPreviewPanel() {
@@ -319,7 +440,7 @@ public class LabelApp extends JFrame {
 
         leftPanel.add(websiteBtn);
 
-        
+
 
         header.add(leftPanel, BorderLayout.WEST);
 
@@ -372,10 +493,12 @@ public class LabelApp extends JFrame {
     // ---------------------------------------------------------------- helpers
 
     private static JPanel labeled(String label, JComponent field) {
-        JPanel p = new JPanel(new BorderLayout(0, 2));
-        p.setBorder(new EmptyBorder(3, 0, 3, 0));
+        JPanel p = new JPanel(new BorderLayout(0, 4));
+        p.setOpaque(false);
+        p.setBorder(new EmptyBorder(4, 0, 5, 0));
         JLabel l = new JLabel(label);
-        l.setFont(l.getFont().deriveFont(Font.PLAIN, 11f));
+        l.setHorizontalAlignment(SwingConstants.LEFT);
+        l.setFont(l.getFont().deriveFont(Font.PLAIN, 12f));
         p.add(l, BorderLayout.NORTH);
         p.add(field, BorderLayout.CENTER);
         p.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -384,7 +507,9 @@ public class LabelApp extends JFrame {
     }
 
     private static JPanel row(JComponent a, JComponent b) {
-        JPanel p = new JPanel(new GridLayout(1, 2, 8, 0));
+        JPanel p = new JPanel(new GridLayout(1, 2, 12, 0));
+        p.setOpaque(false);
+        p.setBorder(new EmptyBorder(2, 0, 2, 0));
         p.add(a); p.add(b);
         p.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.setMaximumSize(new Dimension(Integer.MAX_VALUE, p.getPreferredSize().height));
@@ -401,7 +526,8 @@ public class LabelApp extends JFrame {
 
     private static JTextField textField() {
         JTextField tf = new JTextField();
-        tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        tf.setPreferredSize(new Dimension(180, 28));
+        tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
         return tf;
     }
 
