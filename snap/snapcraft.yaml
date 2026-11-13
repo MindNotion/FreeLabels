@@ -49,25 +49,71 @@ parts:
       - maven
     override-build: |
       set -eux
+
+      echo "Configuring Maven to use the Launchpad build proxy..."
+
+      # Launchpad supplies proxy settings through environment variables.
+      # Maven/Java does not reliably consume shell proxy variables directly.
+      PROXY_URL="${https_proxy:-${HTTPS_PROXY:-${http_proxy:-${HTTP_PROXY:-}}}}"
+
+      if [ -n "$PROXY_URL" ]; then
+        # Remove URL scheme and path, leaving host:port.
+        PROXY_AUTHORITY="${PROXY_URL#*://}"
+        PROXY_AUTHORITY="${PROXY_AUTHORITY%%/*}"
+
+        # Remove optional username/password if present.
+        PROXY_AUTHORITY="${PROXY_AUTHORITY##*@}"
+
+        PROXY_HOST="${PROXY_AUTHORITY%%:*}"
+        PROXY_PORT="${PROXY_AUTHORITY##*:}"
+
+        if [ -z "$PROXY_HOST" ] || [ -z "$PROXY_PORT" ] || [ "$PROXY_HOST" = "$PROXY_PORT" ]; then
+          echo "ERROR: Could not parse proxy host and port from: $PROXY_URL"
+          exit 1
+        fi
+
+        mkdir -p "$HOME/.m2"
+
+        cat > "$HOME/.m2/settings.xml" <<EOF
+      <settings>
+        <proxies>
+          <proxy>
+            <id>launchpad-build-proxy</id>
+            <active>true</active>
+            <protocol>http</protocol>
+            <host>${PROXY_HOST}</host>
+            <port>${PROXY_PORT}</port>
+            <nonProxyHosts>localhost|127.0.0.1</nonProxyHosts>
+          </proxy>
+        </proxies>
+      </settings>
+      EOF
+
+        echo "Maven proxy configured for ${PROXY_HOST}:${PROXY_PORT}"
+      else
+        echo "WARNING: No proxy environment variable found; Maven will try direct access."
+      fi
+
       echo "Building FreeLabels with Maven (Java 11 bytecode target)..."
       mvn -B -DskipTests package
 
       APP_INPUT="$SNAPCRAFT_PART_BUILD/app-input"
       APP_DEST="$SNAPCRAFT_PART_BUILD/app-image"
+
       rm -rf "$APP_INPUT" "$APP_DEST"
       mkdir -p "$APP_INPUT"
       cp target/freelabels.jar "$APP_INPUT/freelabels.jar"
 
       echo "Creating self-contained Linux application image with JDK 17 jpackage..."
-      jpackage \
-        --type app-image \
-        --input "$APP_INPUT" \
-        --dest "$APP_DEST" \
-        --name FreeLabels \
-        --main-jar freelabels.jar \
-        --main-class com.freelabels.LabelApp \
-        --app-version 2.4.0 \
-        --vendor MindNotion \
+      jpackage \\
+        --type app-image \\
+        --input "$APP_INPUT" \\
+        --dest "$APP_DEST" \\
+        --name FreeLabels \\
+        --main-jar freelabels.jar \\
+        --main-class com.freelabels.LabelApp \\
+        --app-version 2.4.0 \\
+        --vendor MindNotion \\
         --icon packaging/icons/icon.png
 
       test -x "$APP_DEST/FreeLabels/bin/FreeLabels"
